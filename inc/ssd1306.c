@@ -157,20 +157,24 @@ void ssd1306_vline(ssd1306_t *ssd, uint8_t x, uint8_t y0, uint8_t y1, bool value
 void ssd1306_draw_char(ssd1306_t *ssd, char c, uint8_t x, uint8_t y)
 {
   uint16_t index = 0;
-  char ver=c;
-  if (c >= 'A' && c <= 'Z')
-  {
-    index = (c - 'A' + 11) * 8; // Para letras maiúsculas
-  }else  if (c >= '0' && c <= '9')
-  {
-    index = (c - '0' + 1) * 8; // Adiciona o deslocamento necessário
+
+  // Tratamento de letras maiúsculas
+  if (c >= 'A' && c <= 'Z') {
+    index = (c - 'A' + 10) * 8;  // Para letras maiúsculas (A-Z)
   }
-  
-  for (uint8_t i = 0; i < 8; ++i)
-  {
+  // Tratamento de números
+  else if (c >= '0' && c <= '9') {
+    index = (c - '0' + 0) * 8;  // Para números (0-9)
+  }
+  // Tratamento de letras minúsculas
+  else if (c >= 'a' && c <= 'z') {
+    index = (c - 'a' + 36) * 8;  // Para letras minúsculas (a-z)
+  }
+
+  // Desenha o caractere
+  for (uint8_t i = 0; i < 8; ++i) {
     uint8_t line = font[index + i];
-    for (uint8_t j = 0; j < 8; ++j)
-    {
+    for (uint8_t j = 0; j < 8; ++j) {
       ssd1306_pixel(ssd, x + i, y + j, line & (1 << j));
     }
   }

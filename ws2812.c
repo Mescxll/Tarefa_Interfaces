@@ -24,9 +24,6 @@ ssd1306_t ssd;
 #define BOTAO_A 5   // Botão A
 #define BOTAO_B 6   // Botão B
 
-// Variáveis que definem a cor da Matriz
-double r = 1.0, g = 0.0, b = 1.0;
-
 // Protótipo da função
 static void gpio_irq_handler(uint gpio, uint32_t events);
 
@@ -110,6 +107,18 @@ double numeroNove[25] = {
     0.0, 0.8, 0.8, 0.8, 0.0
 };
 
+double nulo[25] = {   
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0
+};
+
+double *numeros[10] = {numeroZero, numeroUm, numeroDois, numeroTres, numeroQuatro, 
+    numeroCinco, numeroSeis, numeroSete, numeroOito, numeroNove};
+
+
 //Função para configurar o PIO
 void configurar_pio() {
     sm = pio_claim_unused_sm(pio, true);
@@ -117,26 +126,28 @@ void configurar_pio() {
     ws2812_program_init(pio, sm, offset, PINO_LEDS);
 }
 
+
 // Função para mostrar o estado dos LEDs no dispaly
 void atualizar_mensagens() {
-    ssd1306_fill(&ssd, false); 
+    
     char mensagem_G[16];
     char mensagem_B[16];
 
-    if (gpio_get(LED_G)) {
-        sprintf(mensagem_G, "Verde Ligado");
-    } else {
-        sprintf(mensagem_G, "Verde Desligado");
+    
+    if (gpio_get(LED_G)) { 
+        ssd1306_fill(&ssd, false);
+        sprintf(mensagem_G, "VerdeLigado");
+        ssd1306_draw_string(&ssd, mensagem_G, 10, 10);
+    } else if (gpio_get(LED_B)) {
+        ssd1306_fill(&ssd, false);
+        sprintf(mensagem_B, "AzulLigado"); 
+        ssd1306_draw_string(&ssd, mensagem_B, 10, 30); 
+    }else{
+        ssd1306_fill(&ssd, false);
+        sprintf(mensagem_G, "Desligado"); 
+        ssd1306_draw_string(&ssd, mensagem_G, 10, 10);   
     }
-    if (gpio_get(LED_B)) {
-        sprintf(mensagem_B, "Azul Ligado");
-    } else {
-        sprintf(mensagem_B, "Azul Desligado");
-    }
-
-    ssd1306_draw_string(&ssd, mensagem_G, 20, 30);
-    ssd1306_draw_string(&ssd, mensagem_B, 20, 30);
-    ssd1306_send_data(&ssd); 
+    ssd1306_send_data(&ssd);
 }
 
  //Função para definir a intensidade dos leds
@@ -151,19 +162,13 @@ void atualizar_mensagens() {
  }
 
 //Função para fazer com que a matriz seja ativada, em uma cor especificada
-void ligarMatriz(double r, double g, double b, double *desenho){
-    uint32_t valorLed;
-    for (int16_t i = 0; i < LEDS; i++) { 
-        if(r != 0.0){
-            valorLed = definirLeds(desenho[24-i], g, b);           
-        }else if(g != 0.0){
-            valorLed = definirLeds(r, desenho[24-i], b);    
-        }else if(b != 0.0){
-            valorLed = definirLeds(r, g, desenho[24-i]);           
+void ligarMatriz(double *desenho){
+        uint32_t valor_led;
+        for (int16_t i = 0; i < LEDS; i++){
+            valor_led = definirLeds(desenho[24 - i], 0.0, desenho[24 - i]); 
+            pio_sm_put_blocking(pio, sm, valor_led);
         }
-        pio_sm_put_blocking(pio, sm, valorLed);
     }
-}
 
 // Função principal
 int main(){
@@ -207,7 +212,8 @@ int main(){
     ssd1306_fill(&ssd, false);
     ssd1306_send_data(&ssd);
 
-    
+    ssd1306_fill(&ssd, false);
+    ssd1306_send_data(&ssd);
 
     // Mensagem inicial
     printf("RP2040 inicializado. Envie digitos para serem lidos no display.\n");
@@ -221,44 +227,20 @@ int main(){
             // Lê um caractere
             if (scanf("%c", &c) == 1){
                 printf("Caractere recebido: '%c'\n", c);
+
                 // Exibe os números na matriz caso sejam digitados
-                if(c>=0 && c<=9){
-                    if(c==0){
-                        ligarMatriz(r, g, b, numeroZero);
-                    }
-                    if(c==1){
-                        ligarMatriz(r, g, b, numeroUm);
-                    }
-                    if(c==2){
-                        ligarMatriz(r, g, b, numeroDois);
-                    }
-                    if(c==3){
-                        ligarMatriz(r, g, b, numeroTres);
-                    }
-                    if(c==4){
-                        ligarMatriz(r, g, b, numeroQuatro);
-                    }
-                    if(c==5){
-                        ligarMatriz(r, g, b, numeroCinco);
-                    }
-                    if(c==6){
-                        ligarMatriz(r, g, b, numeroSeis);
-                    }
-                    if(c==7){
-                        ligarMatriz(r, g, b, numeroSete);
-                    }
-                    if(c==8){
-                        ligarMatriz(r, g, b, numeroOito);
-                    }
-                    if(c==9){
-                        ligarMatriz(r, g, b, numeroNove);
-                    }
+                if (c >= '0' && c <= '9') {
+                    int numero = c - '0'; 
+                    if (numero >= 0 && numero <= 9) {
+                        ligarMatriz(numeros[numero]);
+                    } 
                 }
                 // Altera o estado da variável
                 cor = !cor;
 
                 // Exibe o caractere no display
-                ssd1306_fill(&ssd, !cor);              
+                ssd1306_fill(&ssd, !cor);  
+                ssd1306_rect(&ssd, 3, 3 , 112, 58, cor, !cor);            
                 ssd1306_draw_char(&ssd, c, 50, 30); 
                 ssd1306_send_data(&ssd);              
             }
@@ -273,23 +255,27 @@ void gpio_irq_handler(uint gpio, uint32_t events) {
     uint32_t tempo_real = to_us_since_boot(get_absolute_time()); // Obtém o tempo real
     // Debouncing     
     if (tempo_real - ultimo_tempo > 200000) { //Verifica se passou 200ms desde o último evento
-        if (gpio == BOTAO_A) { 
-            if (gpio_get(LED_B)==1) { // Botão A inverte o estado do LED azul
-                gpio_put(LED_B, !gpio_get(LED_B)); 
+        if (gpio == BOTAO_A) { // Botão A inverte o estado do LED azul
+            if (gpio_get(LED_B)) { 
+                gpio_put(LED_B, 0); 
                 printf("LED azul desligado\n");
+            } else {
+                gpio_xor_mask(1 << LED_G); 
+                printf("LED Verde: %s\n", gpio_get(LED_G) ? "Desligado" : "Ligado");  
+            }           
+        }
+        if (gpio == BOTAO_B) { // Botão B inverte o estado do LED verde
+            if (gpio_get(LED_G)) { 
+                gpio_put(LED_G, 0); 
+                printf("LED verde desligado\n");
+            } else {
+                gpio_xor_mask(1 << LED_B); 
+                printf("LED Azul: %s\n", gpio_get(LED_B) ? "Desligado" : "Ligado");              
             }
         }
-        if (gpio == BOTAO_B) {
-            if (gpio_get(LED_G)==1) { 
-                gpio_put(LED_G, !gpio_get(LED_G)); // Botão B inverte o estado do LED verde
-                printf("LED verde desligado\n");
-            } 
-        }  
         // Mostra no display
         atualizar_mensagens();   
     }
     // Atualiza o tempo
     ultimo_tempo = tempo_real; 
 }
-
-
